@@ -6,15 +6,19 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from adjustText import adjust_text
-vcf_files = glob.glob("/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/swift+NF-viralrecon amp/*.vcf")
-ref_vcf_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/B_1_1_529.vcf"
-fig_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/swift_NF_viralrecon_amp_vcf_mutation_heatmap.png"
-plt_title = "SNPs by Sample: Swift/ViralRecon"
 
 vcf_files = glob.glob("/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/mybaits_NF-viralrecon amp incl iVar trim/*.vcf")
 ref_vcf_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/B_1_1_529.vcf"
-fig_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/mybaits_NF_viralrecon_amp_vcf_mutation_heatmap.png"
+fig_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/mybaits_NF_viralrecon_amp_vcf_mutation_heatmap_wrects.png"
 plt_title = "SNPs by Sample: MyBaits/ViralRecon"
+highlight_txt_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/mybaits_NF__highlights.txt"
+
+vcf_files = glob.glob("/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/swift+NF-viralrecon amp/*.vcf")
+ref_vcf_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/VCF-files_for_Simon/B_1_1_529.vcf"
+fig_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/swift_NF_viralrecon_amp_vcf_mutation_heatmap_wrects.png"
+highlight_txt_path = "/media/simonray/data24/data/uio_dropbox_sr/DResearch/beathe/mybaits_vs_swift/plots/swift_NF__highlights.txt"  # Adjust path to your file location
+plt_title = "SNPs by Sample: Swift/ViralRecon"
+
 
 
 def get_vcf_header_lines(filepath):
@@ -98,6 +102,52 @@ fig, ax1 = plt.subplots(figsize=(10.5, 12))
 my_colors = ["#e0e0e0", "#1f77b4"]
 cmap = sns.color_palette(my_colors)
 
+# Provide the specific sample names or 0-indexed column positions to highlight
+# Indices match your target sample columns (e.g., 3rd, 5th, 6th column...)
+#highlight_indices = [3, 5, 6, 11, 14, 15, 16, 20, 21, 22]
+observed_positions = final_matrix.index.values
+highlight_indices = []
+box_color = "#6E7D8C"  # Default to Slate Grey if file read fails
+
+if os.path.exists(highlight_txt_path):
+    with open(highlight_txt_path, "r") as f:
+        lines = [line.strip() for line in f.readlines() if line.strip()]
+
+        if lines:
+            # If the first line starts with #, treat it as the hex code
+            if lines[0].startswith("#"):
+                box_color = lines[0]
+                indices_line = lines[1] if len(lines) > 1 else ""
+            else:
+                indices_line = lines[0]
+
+            # Parse the indices out of the remaining text
+            if indices_line:
+                highlight_indices = [
+                    int(idx.strip()) for idx in re.split(r"[,\s]+", indices_line) if idx.strip().isdigit()
+                ]
+else:
+    print(f"Warning: Highlight configuration file '{highlight_txt_path}' not found. Skipping box highlights.")
+
+total_rows = len(final_matrix.index)
+
+
+for idx in highlight_indices:
+    if idx < len(sorted_columns):
+        rect = plt.Rectangle(
+            (idx, 0),               # Start at top left corner of column
+            1.0,                    # Exactly 1 column wide
+            total_rows,             # Span down the full row space
+            edgecolor=box_color,    # #00AA4F Crisp green #
+                                    # #E53935 (A slightly brighter, classic cherry red)
+                                    # #C62828 (A deeper, slightly darker crimson for high contrast against light backgrounds)
+            facecolor="none",
+            linewidth=1.5,
+            zorder=3                # Forces border overlay on top of background grids
+        )
+        ax1.add_patch(rect)
+# -------------------------------------------------------------
+
 # ==========================================
 # 4. LEFT PANEL: THE HEATMAP MATRIX
 # ==========================================
@@ -112,7 +162,7 @@ sns.heatmap(
 )
 
 # Left Y-Axis: The Clean Genomic Ruler (1,000 nt ticks / 5,000 nt labels)
-observed_positions = final_matrix.index.values
+
 max_pos = observed_positions.max()
 
 left_tick_positions = []
